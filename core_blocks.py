@@ -59,7 +59,7 @@ def fetching(program: list[intbv], clk: _Signal, reset: _Signal, pc: _Signal,
             # Use named constants for instruction types
             if icode_val in [IIRMOVQ, IRMMOVQ, IMRMOVQ]:
                 immediate_val = read_8byte_number(program, pc_val + 2)
-                valC.next = intbv(immediate_val)[64:]
+                valC.next = immediate_val
                 valP.next = pc_val + 10
             else:
                 valC.next = intbv(0)[64:]
@@ -92,9 +92,9 @@ def decoding(clk: _Signal, reset: _Signal,  icode: _Signal, \
             srcB.next = RNONE
 
         if srcA.next != RNONE:
-            valA.next = Regs[srcA.next]
+            valA.next = Regs[srcA.next].val
         if srcB.next != RNONE:
-            valB.next = Regs[srcB.next]
+            valB.next = Regs[srcB.next].val
         
         
     return decode
@@ -123,7 +123,7 @@ def execution(clk: _Signal, reset: _Signal,  icode: _Signal, ifun: _Signal, \
             aluA = 8
 
         if icode.val in [IMRMOVQ, IOPQ, IRMMOVQ, IPUSHQ, IPOPQ, ICALL, IRET]:
-            aluB = valB
+            aluB = valB.val
        
 
         #CC = intvbv(0)[3:] and CC[0] -> ZF, CC[1] -> SF, CC[2] -> OF
@@ -187,25 +187,25 @@ def memory_access(clk: _Signal, reset: _Signal, icode: _Signal,
         mem_write = 0
 
         if icode.val in [IRMMOVQ, IPUSHQ, ICALL, IMRMOVQ]:
-            mem_addr = valE
+            mem_addr = valE.val
         if icode.val in [IPOPQ, IRET]:
-            mem_addr = valA
+            mem_addr = valA.val
 
         mem_read = icode.val in [IMRMOVQ, IPOPQ, IRET]
         mem_write = icode.val in [IRMMOVQ, IPUSHQ, ICALL]
         
         if icode.val in [ICALL]:
-            mem_data = valP
+            mem_data = valP.val
         if icode.val in [IPUSHQ, IRMMOVQ]:
-            mem_data = valA
+            mem_data = valA.val
 
         if mem_read or mem_write:
             dmem_error.next = mem_addr >= len(mem)
 
         if mem_read and not dmem_error.next:
-            valM.next = read_8byte_number(mem.val, mem_addr)
+            valM.next = read_8byte_number_sig(mem, mem_addr)
         if mem_write and not dmem_error.next:
-            write_8byte_number(mem.val, mem_addr, mem_data)
+            write_8byte_number_sig(mem, mem_addr, mem_data)
 
         if imem_error.val:
             Stat.next = SADR  # Address error

@@ -30,33 +30,36 @@ def reset_generator(reset, clk, reset_cycles=3):
     return gen
 
 @block 
-def CPU(program: list[intbv], clk: _Signal, reset: _Signal):
-    pc = Signal(intbv(0)[64:])
+def CPU(program: list[intbv], clk: _Signal, reset: _Signal, main: int):
+    pc = Signal(intbv(main)[64:])
     icode = Signal(intbv(0)[4:])
     ifun = Signal(intbv(0)[4:])
     rA = Signal(intbv(0)[4:])
     rB = Signal(intbv(0)[4:])
-    valA = Signal(intbv(0)[64:])
-    valB = Signal(intbv(0)[64:])
-    valC = Signal(intbv(0)[64:])
-    valE = Signal(intbv(0)[64:])
+    valA = Signal(intbv(0)[64:].signed())
+    valB = Signal(intbv(0)[64:].signed())
+    valC = Signal(intbv(0)[64:].signed())
+    valE = Signal(intbv(0)[64:].signed())
     valM = Signal(intbv(0)[64:])
     valP = Signal(intbv(0)[64:])
     srcA = Signal(intbv(0)[4:])
     srcB = Signal(intbv(0)[4:])
-    Regs = [Signal(intbv(0)[64:]) for _ in range(15)]
-    old_Regs = [Signal(intbv(0)[64:]) for _ in range(15)]
+    Regs = [Signal(intbv(0)[64:].signed()) for _ in range(15)]
+    #rsp
+    Regs[4] = Signal(intbv(MEM_SIZE - 1)[64:])
+    old_Regs = [Signal(Regs[i].val) for i in range(15)]
 
     dstE = Signal(intbv(0)[4:])
     dstM = Signal(intbv(0)[4:])
     Cnd = Signal(intbv(0)[1:])
     Stat = Signal(intbv(0)[3:])
     CC = Signal(intbv(0)[3:])
+    old_CC = Signal(intbv(0)[3:])
     imem_error = Signal(intbv(0)[1:])
     dmem_error = Signal(intbv(0)[1:])
     instr_valid = Signal(intbv(1)[1:])
-    mem = [Signal(intbv(0)[64:]) for _ in range(MEM_SIZE)]
-    old_mem = [Signal(intbv(0)[64:]) for _ in range(MEM_SIZE)]
+    mem = [Signal(intbv(0)[64:].signed()) for _ in range(MEM_SIZE)]
+    old_mem = [Signal(intbv(0)[64:].signed()) for _ in range(MEM_SIZE)]
 
 
     # Stage enables (only one active at a time)
@@ -86,7 +89,7 @@ def CPU(program: list[intbv], clk: _Signal, reset: _Signal):
 
     @always_seq(clk.posedge, reset=reset)
     def controller():
-        check_diff(old_Regs, Regs, old_mem, mem)
+        check_diff(old_Regs, Regs, old_mem, mem, old_CC, CC)
         if state.val == t_state.HALT:
             raise StopSimulation(f"Executions was stopped at time {myhdl.now()}. State:{bin(Stat.val)}")
 
@@ -94,6 +97,7 @@ def CPU(program: list[intbv], clk: _Signal, reset: _Signal):
             old_Regs[i].next = Regs[i].val
         for i in range(MEM_SIZE):
             old_mem[i].next = mem[i].val
+        old_CC.next = CC.val
         # Set enables based on current state
         en_fetch.next = (state.val == t_state.F)
         en_decode.next = (state.val == t_state.D)
