@@ -17,10 +17,14 @@ def yassembling(file_path: str) -> list[intbv]:
     with open(file_path, 'r') as file:
         lines = file.readlines()
     machine_code = []
+    labels = {}
     for line in lines:
         if line.startswith('#'):
             continue
         if line.strip() == '':
+            continue
+        if line.strip().startswith('$') and line.strip().endswith(':'):
+            labels[line.strip()[1:-1]] = len(machine_code)
             continue
         words = re.split(r'[,\s; ]+', line.strip())
         words = list(filter(lambda x: x != '', words))
@@ -36,6 +40,12 @@ def yassembling(file_path: str) -> list[intbv]:
             if words[0] in ["jmp", "jle", "jl", "je", "jne", "jge", "jg", "call"]:
                 if words[1].isdigit():
                     m_dest = intbv(int(words[1]))[64:]
+                    machine_code.append(m_command)
+                    for _ in range(8):
+                        machine_code.append(intbv(0)[8:])
+                    write_8byte_number(machine_code, len(machine_code) - 8, m_dest)
+                elif words[1] in labels:
+                    m_dest = intbv(labels[words[1]])[64:]
                     machine_code.append(m_command)
                     for _ in range(8):
                         machine_code.append(intbv(0)[8:])
@@ -109,10 +119,11 @@ def yassembling(file_path: str) -> list[intbv]:
                 raise ValueError(f"This command should have 1 or 0 arguments, but has 2: {line}")
         else:
             raise ValueError(f"Too many arguments. Max is 2, but has {len(words) - 1}: {line}")
-    return machine_code
+    main = -1 if 'main' not in labels else labels['main']
+    return machine_code, main
 
 if __name__ == "__main__":
     file_path = input("Enter the path to the file with the program: ")
-    program = yassembling(file_path)
+    program, main = yassembling(file_path)
     for elem in program:
         print(hex(int(elem)), end=" ")

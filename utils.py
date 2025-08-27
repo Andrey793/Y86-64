@@ -1,5 +1,6 @@
 from myhdl import intbv
 import myhdl
+from myhdl._Signal import _Signal
 
 IHALT = 0x0
 INOP = 0x1
@@ -38,6 +39,17 @@ RR11 = 0XB
 RR12 = 0XC
 RR13 = 0XD
 RR14 = 0XE
+
+def read_8byte_number_sig(s: list[_Signal], ind: int) -> int:
+    val = intbv(0)[64:]
+    for j in range(8):
+        val[8 * (j + 1) : 8 * j] = intbv(s[j + ind].val)[8:]
+    return val
+
+def write_8byte_number_sig(s: list[_Signal], ind: int, val: int | intbv):
+    num = intbv(val)[64:]
+    for j in range(8):
+        s[j + ind].next = num[8 * (j + 1) : 8 * j]
 
 def read_8byte_number(s: list[intbv], ind: int) -> int:
     val = intbv(0)[64:]
@@ -100,10 +112,11 @@ def print_registers(Regs: list[intbv]):
     print('\n' + "-" * 50)
     print()
 
-def check_diff(old_regs: list[intbv], new_regs: list[intbv], old_mem: list[intbv], new_mem: list[intbv]):
+def check_diff(old_regs: list[intbv], new_regs: list[intbv], old_mem: list[intbv], new_mem: list[intbv], old_CC: intbv, new_CC: intbv):
     #check regs
     d1 = False
     d2 = False
+    d3 = False
     for i in range(15):
         if old_regs[i].val != new_regs[i].val:
             print(f"{regs[i]}: {int(old_regs[i].val)} -> {int(new_regs[i].val)}", end=" | ")
@@ -113,8 +126,11 @@ def check_diff(old_regs: list[intbv], new_regs: list[intbv], old_mem: list[intbv
         print()
     for i in range(1024):
         if old_mem[i].val != new_mem[i].val:
-            print(f"Mem addr{i}: {int(old_mem[i].val)} -> {int(new_mem[i].val)}", end=" | ")
+            print(f"Mem addr {i}: {int(old_mem[i].val)} -> {int(new_mem[i].val)}")
             d2 = True
-    if d1 or d2:
+    if old_CC.val != new_CC.val:
+        print(f"CC: {bin(old_CC.val)} -> {bin(new_CC.val)}")
+        d3 = True
+    if d1 or d2 or d3:
         print("Sim time =", myhdl.now())
         print("-" * 50)
