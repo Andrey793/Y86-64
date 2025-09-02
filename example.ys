@@ -1,0 +1,17 @@
+$f1:
+rrmovq %r10, %rax
+halt
+
+$f2:
+rrmovq %r9, %rax
+halt
+
+$main:
+irmovq 13, %r8
+irmovq 11, %r9
+pushq %r8
+popq %r10
+subq %r10, %r9
+jl f1
+jmp f2
+halt
