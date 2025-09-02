@@ -1,6 +1,7 @@
 from myhdl import intbv
 import myhdl
-from myhdl._Signal import _Signal
+from myhdl._Signal import _Signal, Signal
+from cpu_utils import MEM_SIZE
 
 IHALT = 0x0
 INOP = 0x1
@@ -18,9 +19,9 @@ IPOPQ = 0XB
 
 FNONE = 0X0
 RRSP = 4
-RNONE = 0XA
+RNONE = 0XF
 ALUADD = 0X0
-SAOK = 0X1
+SAOK = 0X0
 SADR = 0X2
 SINS = 0X3
 SHLT = 0X4
@@ -39,6 +40,8 @@ RR11 = 0XB
 RR12 = 0XC
 RR13 = 0XD
 RR14 = 0XE
+
+    
 
 def read_8byte_number_sig(s: list[_Signal], ind: int) -> int:
     val = intbv(0)[64:]
@@ -112,25 +115,48 @@ def print_registers(Regs: list[intbv]):
     print('\n' + "-" * 50)
     print()
 
-def check_diff(old_regs: list[intbv], new_regs: list[intbv], old_mem: list[intbv], new_mem: list[intbv], old_CC: intbv, new_CC: intbv):
+
+def check_diff_n_update(old_regs: list[_Signal], new_regs: list[_Signal], old_mem: list[_Signal], \
+    new_mem: list[_Signal], old_CC: _Signal, new_CC: _Signal, dstE: intbv, \
+    dstM: intbv, valE: intbv, valA: intbv):
     #check regs
     d1 = False
     d2 = False
     d3 = False
-    for i in range(15):
-        if old_regs[i].val != new_regs[i].val:
-            print(f"{regs[i]}: {int(old_regs[i].val)} -> {int(new_regs[i].val)}", end=" | ")
+
+    if dstE!= RNONE:
+        if dstE < 0 or dstE > 14:
+            return
+        if old_regs[dstE].val != new_regs[dstE].val:
+            print(f"Reg {regs[dstE]}: {int(old_regs[dstE].val)} -> {int(new_regs[dstE].val)}", end=" | ")
+            old_regs[dstE].next = new_regs[dstE].val
             d1 = True
+    if dstM != RNONE:
+        if dstM < 0 or dstM > 14:
+            return
+        if old_regs[dstM].val != new_regs[dstM].val:
+            print(f"Reg {regs[dstM]}: {int(old_regs[dstM].val)} -> {int(new_regs[dstM].val)}", end=" | ")
+            old_regs[dstM].next = new_regs[dstM].val
+            d1 = True
+    
     #check mem
     if d1:
         print()
-    for i in range(1024):
-        if old_mem[i].val != new_mem[i].val:
-            print(f"Mem addr {i}: {int(old_mem[i].val)} -> {int(new_mem[i].val)}")
+    if valE >= 0 and valE < MEM_SIZE:
+        if old_mem[valE].val != new_mem[valE].val:
+            print(f"Mem addr {valE}: {int(old_mem[valE].val)} -> {int(new_mem[valE].val)}", end=" | ")
+            old_mem[valE].next = new_mem[valE].val
+            d2 = True
+    if valA >= 0 and valA < MEM_SIZE:
+        if old_mem[valA].val != new_mem[valA].val:
+            print(f"Mem addr {valA}: {int(old_mem[valA].val)} -> {int(new_mem[valA].val)}", end=" | ")
+            old_mem[valA].next = new_mem[valA].val
             d2 = True
     if old_CC.val != new_CC.val:
         print(f"CC: {bin(old_CC.val)} -> {bin(new_CC.val)}")
+        old_CC.next = new_CC.val
         d3 = True
     if d1 or d2 or d3:
         print("Sim time =", myhdl.now())
         print("-" * 50)
+

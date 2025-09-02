@@ -29,5 +29,3 @@ if __name__ == "__main__":
     file_path = input("Enter the path to the file with the program: ")
     program, main = yasm.yassembling(file_path)
     test_cpu(program, main)
-
-    #добавить метки и уметь их парсить в машинный код

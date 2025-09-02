@@ -16,7 +16,7 @@ registers = {"%rax": 0, "%rcx": 1, "%rdx": 2, "%rbx": 3, "%rsp": 4, "%rbp": 5, "
 def yassembling(file_path: str) -> list[intbv]:
     with open(file_path, 'r') as file:
         lines = file.readlines()
-    machine_code = []
+    machine_code = [intbv(0)[8:]]
     labels = {}
     for line in lines:
         if line.startswith('#'):
